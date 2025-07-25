@@ -26,7 +26,7 @@ def estimate_screen_distance(face_width_pixels, reference_width_pixels=200, refe
 def get_realtime_eye_metrics(eyes, face_width, current_time, start_time, blink_count, blink_durations, prev_eye_count, last_blink_time, blink_start_time, eye_centers, left_eye_color, right_eye_color):
     """Calculate real-time eye-tracking metrics."""
     # Blink detection and duration
-    if len(eyes) == 0 and prev_eye_count > 0 and current_time - last_blink_time > 0.5:
+    if len(eyes) == 0 and prev_eye_count > 0 and current_time - last_blink_time > 0.7:  # Increased threshold
         blink_count += 1
         last_blink_time = current_time
         blink_start_time = current_time
@@ -62,7 +62,7 @@ def get_realtime_eye_metrics(eyes, face_width, current_time, start_time, blink_c
         "right_eye_color": right_eye_color
     }, blink_count, blink_durations, prev_eye_count, last_blink_time, blink_start_time, eye_centers
 
-def track_eye(video_source=1):
+def track_eye(video_source=0):
     face_cascade = cv2.CascadeClassifier(cv2.data.haarcascades + 'haarcascade_frontalface_default.xml')
     eye_cascade = cv2.CascadeClassifier(cv2.data.haarcascades + 'haarcascade_eye_tree_eyeglasses.xml')
     if face_cascade.empty() or eye_cascade.empty():
@@ -72,7 +72,6 @@ def track_eye(video_source=1):
     os.makedirs('captured_eyes', exist_ok=True)
     cap = cv2.VideoCapture(video_source)
     if not cap.isOpened():
-
         print("Error: Could not open video source")
         return
     
@@ -93,7 +92,6 @@ def track_eye(video_source=1):
     left_eye_color = "Unknown"
     right_eye_color = "Unknown"
     eye_centers = []
-    gaze_stability = 0
     
     cv2.namedWindow('Eye Tracking System', cv2.WINDOW_NORMAL)
     
@@ -120,20 +118,17 @@ def track_eye(video_source=1):
                     face_width = fw
                     roi_gray = gray[fy:fy+fh//2, fx:fx+fw]
                     roi_color = frame[fy:fy+fh//2, fx:fx+fw]
-                    detected_eyes = eye_cascade.detectMultiScale(roi_gray, scaleFactor=1.03, minNeighbors=15, minSize=(30, 30))
+                    detected_eyes = eye_cascade.detectMultiScale(roi_gray, scaleFactor=1.01, minNeighbors=10, minSize=(30, 30))
                     for (ex, ey, ew, eh) in detected_eyes:
                         eyes.append((fx + ex, fy + ey, ew, eh))
                 
                 eyes = sorted(eyes, key=lambda x: x[0])
                 
-                # Get real-time metrics
                 current_time = time.time()
                 metrics, blink_count, blink_durations, prev_eye_count, last_blink_time, blink_start_time, eye_centers = get_realtime_eye_metrics(
                     eyes, face_width, current_time, start_time, blink_count, blink_durations, prev_eye_count, last_blink_time, blink_start_time, eye_centers, left_eye_color, right_eye_color
                 )
-                gaze_stability = metrics['gaze_stability']
                 
-                # Draw eye rectangles and labels
                 for i, (x, y, w, h) in enumerate(eyes[:2]):
                     cv2.rectangle(frame, (x, y), (x + w, y + h), (0, 255, 0), 1)
                     center = (x + w/2, y + h/2)
@@ -142,7 +137,6 @@ def track_eye(video_source=1):
                     label = "Right Eye" if i == 1 else "Left Eye"
                     cv2.putText(frame, label, (x, y-10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 1)
                 
-                # Display metrics
                 cv2.putText(frame, f"Eyes: {len(eyes)}", (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 255, 0), 2)
                 cv2.putText(frame, f"Blink Rate: {metrics['blink_rate']:.1f}/min", (10, 60), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 255, 0), 2)
                 cv2.putText(frame, f"Avg Blink Duration: {metrics['avg_blink_duration']:.1f} ms", (10, 90), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 255, 0), 2)

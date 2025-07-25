@@ -1,18 +1,17 @@
-# write training code for the model in train.py
-# train_model.py
-
 import pandas as pd
 import numpy as np
 import os
 import tensorflow as tf
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import LabelEncoder, StandardScaler
+import pickle
 import matplotlib.pyplot as plt
 import seaborn as sns
 
 # Paths
 DATA_PATH = "data/eye_metrics_dataset.csv"
 MODEL_PATH = "blink_disease.h5"
+SCALER_PATH = "scaler.pkl"
 
 # Step 1: Load dataset
 print("📊 Loading dataset...")
@@ -25,7 +24,7 @@ if df.isnull().sum().any():
     print("⚠️ Dataset contains missing values. Please clean before training.")
     exit()
 
-# Step 3: Define features (no label column as requested)
+# Step 3: Define features
 features = ["blink_rate", "avg_blink_duration", "gaze_stability", "screen_distance"]
 X = df[features]
 
@@ -37,6 +36,11 @@ y = le.fit_transform(labels)
 # Step 5: Normalize features
 scaler = StandardScaler()
 X_scaled = scaler.fit_transform(X)
+
+# Save the scaler
+with open(SCALER_PATH, "wb") as f:
+    pickle.dump(scaler, f)
+print(f"✅ Scaler saved to {SCALER_PATH}")
 
 # Step 6: Train/test split
 print("🔀 Splitting data...")
@@ -64,6 +68,5 @@ loss, accuracy = model.evaluate(X_test, y_test, verbose=0)
 print(f"Test Accuracy: {accuracy:.2f}")
 
 # Step 10: Save model
-# os.makedirs("models", exist_ok=True)
 model.save(MODEL_PATH)
 print(f"✅ TensorFlow model saved to {MODEL_PATH}")
